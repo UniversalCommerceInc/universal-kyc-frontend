@@ -45,6 +45,7 @@ const CustomerDetail = () => {
   }
 
   const kyc = data?.kyc;
+  // console.log("kyc", kyc)
 
   return (
     <>
@@ -138,8 +139,7 @@ const CustomerDetail = () => {
           </div>
         </div>
 
-        {/* Resubmission Section (Moved to Bottom) */}
-        <div className="p-4 bg-yellow-100 rounded-lg shadow-md flex flex-col sm:flex-row items-start sm:items-center mb-8 gap-4">
+{kyc?.kycStatus === "Rejected" && (      <div className="p-4 bg-yellow-100 rounded-lg shadow-md flex flex-col sm:flex-row items-start sm:items-center mb-8 gap-4">
     {/* Icon Section */}
     <div className="w-12 h-12 flex items-center justify-center bg-yellow-300 text-yellow-700 rounded-full">
       <FaExclamationTriangle className="text-xl" />
@@ -164,7 +164,10 @@ const CustomerDetail = () => {
         Resubmit Now
       </button>
     </div>
-  </div>
+  </div>)
+}
+        {/* Resubmission Section (Moved to Bottom) */}
+  
 
         {/* Image Modal */}
         {selectedImage && (
