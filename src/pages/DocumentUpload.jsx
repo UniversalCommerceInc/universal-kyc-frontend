@@ -44,12 +44,12 @@ const DocumentUpload = ({ idType, onNext }) => {
   const [croppedImage, setCroppedImage] = useState(null);
   const [isImageConfirmed, setIsImageConfirmed] = useState(false);
   const [facingMode, setFacingMode] = useState("user");
-  
+
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   const webcamRef = useRef(null);
   const cropperRef = useRef(null);
   const { id } = useParams();
-  console.log(id)
+  console.log(id);
 
   const renderAnimation = () =>
     idType === "passport" ? <PassportLottie /> : <LottieAnimation />;
@@ -79,7 +79,6 @@ const DocumentUpload = ({ idType, onNext }) => {
       console.error("Failed to capture image. Webcam might not be active.");
     }
   };
-  
 
   const handleUpload = (event) => {
     const file = event.target.files[0];
@@ -95,15 +94,18 @@ const DocumentUpload = ({ idType, onNext }) => {
   const handleCropComplete = () => {
     const cropperInstance = cropperRef.current?.cropper;
     if (cropperInstance) {
-      const croppedDataUrl = cropperInstance.getCroppedCanvas().toDataURL();
-      console.log("Cropped Image:", croppedDataUrl); // Log the cropped image for debugging
+      const croppedCanvas = cropperInstance.getCroppedCanvas({
+        width: 800, // Increase resolution for better quality
+        height: 800,
+      });
+      const croppedDataUrl = croppedCanvas.toDataURL("image/jpeg", 1.0); // Maximum quality
+      console.log("Cropped Image:", croppedDataUrl);
       setCroppedImage(croppedDataUrl);
-      setShowCropper(false); // Hide the cropper after cropping
+      setShowCropper(false);
     } else {
       console.error("Cropper instance not available");
     }
   };
-  
 
   const handleRetake = () => {
     setImageSrc(null);
@@ -133,7 +135,7 @@ const DocumentUpload = ({ idType, onNext }) => {
   //     console.error("No cropped image to proceed.");
   //   }
   // };
-  
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
       <Paper className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8 space-y-4">
@@ -223,36 +225,35 @@ const DocumentUpload = ({ idType, onNext }) => {
               </Box>
             )}
 
-{showCropper && imageSrc && (
-  <div>
-    <Cropper
-      src={imageSrc}
-      style={{ height: "400px", width: "100%" }}
-      initialAspectRatio={1}
-      guides={false}
-      ref={cropperRef}
-      viewMode={1}
-      dragMode="move"
-    />
-    <Box className="flex justify-center space-x-4 mt-4">
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleCropComplete} // Call the crop complete handler
-      >
-        Confirm Crop
-      </Button>
-      <Button
-        variant="outlined"
-        color="secondary"
-        onClick={handleRetake} // Allow the user to retake the image
-      >
-        Retake
-      </Button>
-    </Box>
-  </div>
-)}
-
+            {showCropper && imageSrc && (
+              <div>
+                <Cropper
+                  src={imageSrc}
+                  style={{ height: "400px", width: "100%" }}
+                  initialAspectRatio={1}
+                  guides={false}
+                  ref={cropperRef}
+                  viewMode={1}
+                  dragMode="move"
+                />
+                <Box className="flex justify-center space-x-4 mt-4">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleCropComplete} // Call the crop complete handler
+                  >
+                    Confirm Crop
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleRetake} // Allow the user to retake the image
+                  >
+                    Retake
+                  </Button>
+                </Box>
+              </div>
+            )}
 
             {croppedImage && (
               <div className="flex flex-col items-center mt-6">
@@ -291,7 +292,7 @@ const DocumentUpload = ({ idType, onNext }) => {
           <div className="flex justify-center pt-6">
             <button
               type="button"
-              onClick={()=>onNext(croppedImage)}
+              onClick={() => onNext(croppedImage)}
               className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
             >
               Next <ChevronRight className="ml-1" />
