@@ -16,8 +16,6 @@
 //   const [selfieImage, setSelfieImage] = useState(null);
 //   const [uploadKyc, { isLoading, error }] = useUploadKycMutation();
 
-
-  
 // console.log("id--------", id);
 // console.log("docImg--------", docImg);
 
@@ -112,7 +110,6 @@
 //         const selfieBlob = await fetch(imageSrc).then((res) => res.blob());
 //         const documentBlob = await fetch(docImg).then((res) => res.blob());
 
-
 //         // Ensure `docImg` is converted to Blob if it's not already a File or Blob
 //         // let documentBlob;
 //         // if (docImg instanceof File || docImg instanceof Blob) {
@@ -120,20 +117,20 @@
 //         // } else {
 //         //   documentBlob = await fetch(docImg).then((res) => res.blob());
 //         // }
-  
+
 //         // Create FormData and append files
 //         const formData = new FormData();
 //         formData.append("document", documentBlob, "document.jpg"); // Add document as Blob
 //         formData.append("selfie", selfieBlob, "selfie.jpg"); // Add selfie as Blob
-  
+
 //         console.log("docImg as Blob----", documentBlob);
 //         console.log("selfie as Blob----", selfieBlob);
-  
+
 //         // Make API request
-//         const kycId = id || 
+//         const kycId = id ||
 //         const response = await uploadKyc({ id, file: formData }).unwrap();
 //         console.log("Upload successful:", response);
-  
+
 //         onNext(); // Proceed to the next step
 //       } catch (apiError) {
 //         console.error("Error during upload:", apiError);
@@ -254,7 +251,6 @@
 
 // export default LiveSelfieCapture;
 
-
 // // import React, { useRef, useState, useEffect } from "react";
 // // import Webcam from "react-webcam";
 // // import * as faceapi from "face-api.js";
@@ -340,19 +336,19 @@
 // //         } else {
 // //           documentBlob = await fetch(docImg).then((res) => res.blob());
 // //         }
-  
+
 // //         // Create FormData and append files
 // //         const formData = new FormData();
 // //         formData.append("document", documentBlob, "document.jpg"); // Add document as Blob
 // //         formData.append("selfie", selfieBlob, "selfie.jpg"); // Add selfie as Blob
-  
+
 // //         console.log("docImg as Blob----", documentBlob);
 // //         console.log("selfie as Blob----", selfieBlob);
-  
+
 // //         // Make API request
 // //         const response = await uploadKyc({ id, file: formData }).unwrap();
 // //         console.log("Upload successful:", response);
-  
+
 // //         onNext(); // Proceed to the next step
 // //       } catch (apiError) {
 // //         console.error("Error during upload:", apiError);
@@ -435,8 +431,6 @@
 
 // // export default LiveSelfieCapture;
 
-
-
 import React, { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
 import * as faceapi from "face-api.js";
@@ -464,7 +458,8 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   // Load face-api.js models
   useEffect(() => {
     const loadModels = async () => {
-      const MODEL_URL = process.env.PUBLIC_URL + "/models";
+      const MODEL_URL = "/models";
+      // console.log(MODEL_URL);
       try {
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -522,7 +517,6 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   //   }
   // };
 
-
   const detectFace = async () => {
     if (
       webcamRef.current &&
@@ -535,9 +529,9 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
         width: video.videoWidth,
         height: video.videoHeight,
       };
-  
+
       faceapi.matchDimensions(canvasRef.current, displaySize);
-  
+
       const detections = await faceapi.detectSingleFace(
         video,
         new faceapi.TinyFaceDetectorOptions({
@@ -545,7 +539,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
           scoreThreshold: 0.5,
         })
       );
-  
+
       if (!detections) {
         setFaceDetected(false);
         if (canvasRef.current) {
@@ -555,20 +549,20 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
         }
         return;
       }
-  
+
       const resizedDetections = faceapi.resizeResults(detections, displaySize);
-  
+
       if (canvasRef.current) {
         canvasRef.current
           .getContext("2d")
           .clearRect(0, 0, displaySize.width, displaySize.height);
-  
+
         faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
       }
       setFaceDetected(true);
     }
   };
-  
+
   const handleTakePhoto = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ video: true });
@@ -604,7 +598,10 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
         formData.append("selfie", selfieBlob, "selfie.jpg");
 
         console.log("Uploading form data...");
-        const response = await uploadKyc({ id: kycId, file: formData }).unwrap();
+        const response = await uploadKyc({
+          id: kycId,
+          file: formData,
+        }).unwrap();
         console.log("Upload successful:", response);
 
         const { id } = response.kyc;
@@ -614,7 +611,8 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
       } catch (apiError) {
         console.error("Error during upload:", apiError);
         toast.error(
-          apiError?.data?.details?.message || "Something went wrong. Please try again.",
+          apiError?.data?.details?.message ||
+            "Something went wrong. Please try again.",
           {
             style: { background: "#fee2e2", color: "#b91c1c" },
             icon: "❌",
@@ -650,8 +648,10 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
           {!cameraActive && (
             <p className="text-center text-lg text-gray-700 mb-6">
               Please ensure your face is clearly visible. <br />
-              Click <span className="text-blue-600 font-semibold">'Take'</span> to
-              start capturing your live selfie.
+              Click <span className="text-blue-600 font-semibold">
+                'Take'
+              </span>{" "}
+              to start capturing your live selfie.
             </p>
           )}
 
