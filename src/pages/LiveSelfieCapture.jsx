@@ -449,6 +449,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
   const [submissionInProgress, setSubmissionInProgress] = useState(false); // State for submission loader
+  const [detectingFace, setDetectingFace] = useState(false);
   const [uploadKyc, { isLoading }] = useUploadKycMutation();
 
   const dispatch = useDispatch();
@@ -458,8 +459,8 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   // Load face-api.js models
   useEffect(() => {
     const loadModels = async () => {
-      const MODEL_URL = "/models";
-      // console.log(MODEL_URL);
+      const MODEL_URL = process.env.PUBLIC_URL + "/models";
+      console.log(MODEL_URL);
       try {
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -531,7 +532,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
       };
 
       faceapi.matchDimensions(canvasRef.current, displaySize);
-
+      setDetectingFace(true);
       const detections = await faceapi.detectSingleFace(
         video,
         new faceapi.TinyFaceDetectorOptions({
@@ -539,7 +540,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
           scoreThreshold: 0.5,
         })
       );
-
+      setDetectingFace(false);
       if (!detections) {
         setFaceDetected(false);
         if (canvasRef.current) {
@@ -700,6 +701,18 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
                 />
               </div>
             )}
+
+            {/* {detectingFace && (
+              <div className="absolute inset-0 flex items-center justify-center z-20">
+                <div className="bg-white bg-opacity-60 p-4 rounded-lg shadow-xl flex items-center space-x-4">
+                  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-lg text-gray-700">
+                    Detecting your face... Please keep your face clearly
+                    visible.
+                  </p>
+                </div>
+              </div>
+            )} */}
           </div>
 
           <div className="flex space-x-4">
@@ -715,9 +728,14 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
               ) : (
                 <button
                   disabled
-                  className="px-6 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed"
+                  className="px-6 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed flex items-center justify-center space-x-2"
                 >
-                  Detecting Face...
+                  {detectingFace && (
+                    <div className="w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  <span>
+                    {detectingFace ? "Detecting Face..." : "Detecting Face..."}
+                  </span>
                 </button>
               )
             ) : (
