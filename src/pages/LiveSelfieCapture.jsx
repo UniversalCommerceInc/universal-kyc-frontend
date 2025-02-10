@@ -431,202 +431,451 @@
 
 // // export default LiveSelfieCapture;
 
+// import React, { useRef, useState, useEffect } from "react";
+// import Webcam from "react-webcam";
+// import * as faceapi from "face-api.js";
+// import { Typography } from "@mui/material";
+// import { useDispatch, useSelector } from "react-redux";
+// import { useUploadKycMutation } from "../features/api/assetUploadApiSlice";
+// import { setKycId } from "../features/auth/kycSlice";
+// import { useNavigate } from "react-router-dom";
+// import toast from "react-hot-toast";
+
+// const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
+//   const webcamRef = useRef(null);
+//   const canvasRef = useRef(null);
+//   const [modelsLoaded, setModelsLoaded] = useState(false);
+//   const [faceDetected, setFaceDetected] = useState(false);
+//   const [cameraActive, setCameraActive] = useState(false);
+//   const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
+//   const [submissionInProgress, setSubmissionInProgress] = useState(false); // State for submission loader
+//   const [detectingFace, setDetectingFace] = useState(false);
+//   const [uploadKyc, { isLoading }] = useUploadKycMutation();
+
+//   const dispatch = useDispatch();
+//   const navigate = useNavigate();
+//   const kycId = useSelector((state) => state.kyc.kycId);
+
+//   // Load face-api.js models
+//   useEffect(() => {
+//     const loadModels = async () => {
+//       const MODEL_URL = process.env.PUBLIC_URL + "/models";
+//       console.log(MODEL_URL);
+//       try {
+//         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+//         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+//         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+//         setModelsLoaded(true);
+//       } catch (error) {
+//         console.error("Error loading face-api.js models", error);
+//       }
+//     };
+//     loadModels();
+//   }, []);
+
+//   // const detectFace = async () => {
+//   //   if (
+//   //     webcamRef.current &&
+//   //     webcamRef.current.video.readyState === 4 &&
+//   //     modelsLoaded
+//   //   ) {
+//   //     const video = webcamRef.current.video;
+//   //     const displaySize = {
+//   //       width: video.videoWidth,
+//   //       height: video.videoHeight,
+//   //     };
+
+//   //     faceapi.matchDimensions(canvasRef.current, displaySize);
+
+//   //     const detections = await faceapi.detectSingleFace(
+//   //       video,
+//   //       new faceapi.TinyFaceDetectorOptions({
+//   //         inputSize: 512,
+//   //         scoreThreshold: 0.5,
+//   //       })
+//   //     );
+
+//   //     if (!detections) {
+//   //       setFaceDetected(false);
+//   //       canvasRef.current
+//   //         .getContext("2d")
+//   //         .clearRect(0, 0, displaySize.width, displaySize.height);
+//   //       return;
+//   //     }
+
+//   //     const resizedDetections = faceapi.resizeResults(detections, displaySize);
+
+//   //     canvasRef.current
+//   //       .getContext("2d")
+//   //       .clearRect(0, 0, displaySize.width, displaySize.height);
+
+//   //     if (resizedDetections) {
+//   //       setFaceDetected(true);
+//   //       faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
+//   //     } else {
+//   //       setFaceDetected(false);
+//   //     }
+//   //   }
+//   // };
+
+//   const detectFace = async () => {
+//     if (
+//       webcamRef.current &&
+//       webcamRef.current.video.readyState === 4 &&
+//       modelsLoaded &&
+//       canvasRef.current
+//     ) {
+//       const video = webcamRef.current.video;
+//       const displaySize = {
+//         width: video.videoWidth,
+//         height: video.videoHeight,
+//       };
+
+//       faceapi.matchDimensions(canvasRef.current, displaySize);
+//       setDetectingFace(true);
+//       const detections = await faceapi.detectSingleFace(
+//         video,
+//         new faceapi.TinyFaceDetectorOptions({
+//           inputSize: 512,
+//           scoreThreshold: 0.5,
+//         })
+//       );
+//       setDetectingFace(false);
+//       if (!detections) {
+//         setFaceDetected(false);
+//         if (canvasRef.current) {
+//           canvasRef.current
+//             .getContext("2d")
+//             .clearRect(0, 0, displaySize.width, displaySize.height);
+//         }
+//         return;
+//       }
+
+//       const resizedDetections = faceapi.resizeResults(detections, displaySize);
+
+//       if (canvasRef.current) {
+//         canvasRef.current
+//           .getContext("2d")
+//           .clearRect(0, 0, displaySize.width, displaySize.height);
+
+//         faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
+//       }
+//       setFaceDetected(true);
+//     }
+//   };
+
+//   const handleTakePhoto = async () => {
+//     try {
+//       await navigator.mediaDevices.getUserMedia({ video: true });
+//       setCameraActive(true);
+//       setCameraPermissionGranted(true);
+//     } catch (error) {
+//       console.error("Camera permission denied:", error);
+//       setCameraPermissionGranted(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     let interval;
+//     if (cameraActive && modelsLoaded) {
+//       interval = setInterval(() => {
+//         detectFace();
+//       }, 1000); // Check for face every second
+//     }
+//     return () => clearInterval(interval); // Clean up interval on unmount
+//   }, [cameraActive, modelsLoaded]);
+
+//   const handleCapture = async () => {
+//     const imageSrc = webcamRef.current.getScreenshot();
+//     if (imageSrc) {
+//       setCameraActive(false);
+//       setSubmissionInProgress(true); // Show loader when submission starts
+//       try {
+//         const selfieBlob = await fetch(imageSrc).then((res) => res.blob());
+//         const documentBlob = await fetch(docImg).then((res) => res.blob());
+
+//         const formData = new FormData();
+//         formData.append("document", documentBlob, "document.jpg");
+//         formData.append("selfie", selfieBlob, "selfie.jpg");
+
+//         console.log("Uploading form data...");
+//         const response = await uploadKyc({
+//           id: kycId,
+//           file: formData,
+//         }).unwrap();
+//         console.log("Upload successful:", response);
+
+//         const { id } = response.kyc;
+
+//         dispatch(setKycId(id));
+//         navigate(`/kyc/success/${id}`);
+//       } catch (apiError) {
+//         console.error("Error during upload:", apiError);
+//         toast.error(
+//           apiError?.data?.details?.message ||
+//             "Something went wrong. Please try again.",
+//           {
+//             style: { background: "#fee2e2", color: "#b91c1c" },
+//             icon: "❌",
+//           }
+//         );
+//       } finally {
+//         setSubmissionInProgress(false); // Hide loader once submission ends
+//       }
+//     } else {
+//       toast.error("Unable to capture image. Please try again.", {
+//         style: { background: "#fee2e2", color: "#b91c1c" },
+//         icon: "📸",
+//       });
+//     }
+//   };
+
+//   return (
+//     <div className="flex flex-col items-center justify-center min-h-screen px-6 py-8">
+//       {submissionInProgress ? (
+//         <div className="flex flex-col items-center justify-center">
+//           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+//           <p className="text-lg text-gray-700 mt-4">Submitting KYC data...</p>
+//         </div>
+//       ) : (
+//         <>
+//           <Typography
+//             variant="h5"
+//             className="text-center font-semibold mb-6 text-gray-800"
+//           >
+//             Live Selfie Capture
+//           </Typography>
+
+//           {!cameraActive && (
+//             <p className="text-center text-lg text-gray-700 mb-6">
+//               Please ensure your face is clearly visible. <br />
+//               Click <span className="text-blue-600 font-semibold">
+//                 'Take'
+//               </span>{" "}
+//               to start capturing your live selfie.
+//             </p>
+//           )}
+
+//           <div className="relative w-full max-w-lg h-80 mb-6 rounded-xl overflow-hidden shadow-2xl bg-white flex items-center justify-center">
+//             {!cameraActive ? (
+//               <div className="w-full h-full flex items-center justify-center">
+//                 <div className="flex flex-col items-center justify-center">
+//                   <div className="relative w-40 h-40 rounded-full border-4 border-blue-500 flex items-center justify-center">
+//                     <svg
+//                       xmlns="http://www.w3.org/2000/svg"
+//                       className="h-24 w-24 text-blue-500 animate-pulse"
+//                       viewBox="0 0 24 24"
+//                       fill="none"
+//                       stroke="currentColor"
+//                       strokeWidth={2}
+//                       strokeLinecap="round"
+//                       strokeLinejoin="round"
+//                     >
+//                       <path d="M15 3h4.8c.7 0 1.2.5 1.2 1.2v4.8c0 .7-.5 1.2-1.2 1.2H15" />
+//                       <path d="M4 16c0-2.2 1.8-4 4-4h8c2.2 0 4 1.8 4 4v5H4v-5z" />
+//                       <circle cx="12" cy="10" r="3" />
+//                       <path d="M5 3h3v3H5z" />
+//                     </svg>
+//                   </div>
+//                   <p className="text-gray-500 mt-4 font-medium">
+//                     Align your face within the circle
+//                   </p>
+//                 </div>
+//               </div>
+//             ) : (
+//               <div className="relative">
+//                 <Webcam
+//                   audio={false}
+//                   ref={webcamRef}
+//                   screenshotFormat="image/jpeg"
+//                   className="w-full h-full object-cover rounded-xl shadow-lg"
+//                   videoConstraints={{
+//                     width: 1280,
+//                     height: 720,
+//                     facingMode: "user",
+//                   }}
+//                 />
+//                 <canvas
+//                   ref={canvasRef}
+//                   className="absolute top-0 left-0 w-full h-full rounded-xl z-20"
+//                 />
+//               </div>
+//             )}
+
+//             {/* {detectingFace && (
+//               <div className="absolute inset-0 flex items-center justify-center z-20">
+//                 <div className="bg-white bg-opacity-60 p-4 rounded-lg shadow-xl flex items-center space-x-4">
+//                   <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+//                   <p className="text-lg text-gray-700">
+//                     Detecting your face... Please keep your face clearly
+//                     visible.
+//                   </p>
+//                 </div>
+//               </div>
+//             )} */}
+//           </div>
+
+//           <div className="flex space-x-4">
+//             {cameraActive ? (
+//               faceDetected ? (
+//                 <button
+//                   className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg shadow-md hover:bg-blue-500 transition duration-300"
+//                   onClick={handleCapture}
+//                   disabled={isLoading}
+//                 >
+//                   {isLoading ? "Uploading..." : "Capture"}
+//                 </button>
+//               ) : (
+//                 <button
+//                   disabled
+//                   className="px-6 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed flex items-center justify-center space-x-2"
+//                 >
+//                   {detectingFace && (
+//                     <div className="w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+//                   )}
+//                   <span>
+//                     {detectingFace ? "Detecting Face..." : "Detecting Face..."}
+//                   </span>
+//                 </button>
+//               )
+//             ) : (
+//               <button
+//                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg shadow-md hover:bg-blue-500 transition duration-300"
+//                 onClick={handleTakePhoto}
+//               >
+//                 Take
+//               </button>
+//             )}
+//           </div>
+
+//           {!cameraPermissionGranted && cameraActive && (
+//             <p className="text-red-500 mt-4">
+//               Camera permission is required to proceed.
+//             </p>
+//           )}
+//         </>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default LiveSelfieCapture;
+
+// v3
+
 import React, { useRef, useState, useEffect } from "react";
-import Webcam from "react-webcam";
-import * as faceapi from "face-api.js";
-import { Typography } from "@mui/material";
+import { Typography, Button } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useUploadKycMutation } from "../features/api/assetUploadApiSlice";
 import { setKycId } from "../features/auth/kycSlice";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import * as faceapi from "face-api.js";
 
 const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
-  const webcamRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
-  const [submissionInProgress, setSubmissionInProgress] = useState(false); // State for submission loader
-  const [detectingFace, setDetectingFace] = useState(false);
-  const [uploadKyc, { isLoading }] = useUploadKycMutation();
+  // Refs and state for file capture
+  const fileInputRef = useRef(null);
+  const [capturedFile, setCapturedFile] = useState(null);
+  const [capturedSelfieURL, setCapturedSelfieURL] = useState(null);
+  const [submissionInProgress, setSubmissionInProgress] = useState(false);
 
+  const [uploadKyc, { isLoading }] = useUploadKycMutation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const kycId = useSelector((state) => state.kyc.kycId);
 
-  // Load face-api.js models
+  // Load face detection models on mount.
   useEffect(() => {
-    const loadModels = async () => {
-      const MODEL_URL = process.env.PUBLIC_URL + "/models";
-      console.log(MODEL_URL);
+    async function loadModels() {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-        setModelsLoaded(true);
+        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+        // You can load additional models if needed.
       } catch (error) {
-        console.error("Error loading face-api.js models", error);
+        console.error("Error loading face detection models:", error);
       }
-    };
+    }
     loadModels();
   }, []);
 
-  // const detectFace = async () => {
-  //   if (
-  //     webcamRef.current &&
-  //     webcamRef.current.video.readyState === 4 &&
-  //     modelsLoaded
-  //   ) {
-  //     const video = webcamRef.current.video;
-  //     const displaySize = {
-  //       width: video.videoWidth,
-  //       height: video.videoHeight,
-  //     };
+  // Trigger the native camera via a hidden file input.
+  const handleTake = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
-  //     faceapi.matchDimensions(canvasRef.current, displaySize);
+  // When a file is selected, run face detection and if successful, save it.
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Create an object URL for the selected file.
+      const imageURL = URL.createObjectURL(file);
+      const image = new Image();
+      image.src = imageURL;
 
-  //     const detections = await faceapi.detectSingleFace(
-  //       video,
-  //       new faceapi.TinyFaceDetectorOptions({
-  //         inputSize: 512,
-  //         scoreThreshold: 0.5,
-  //       })
-  //     );
-
-  //     if (!detections) {
-  //       setFaceDetected(false);
-  //       canvasRef.current
-  //         .getContext("2d")
-  //         .clearRect(0, 0, displaySize.width, displaySize.height);
-  //       return;
-  //     }
-
-  //     const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-  //     canvasRef.current
-  //       .getContext("2d")
-  //       .clearRect(0, 0, displaySize.width, displaySize.height);
-
-  //     if (resizedDetections) {
-  //       setFaceDetected(true);
-  //       faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
-  //     } else {
-  //       setFaceDetected(false);
-  //     }
-  //   }
-  // };
-
-  const detectFace = async () => {
-    if (
-      webcamRef.current &&
-      webcamRef.current.video.readyState === 4 &&
-      modelsLoaded &&
-      canvasRef.current
-    ) {
-      const video = webcamRef.current.video;
-      const displaySize = {
-        width: video.videoWidth,
-        height: video.videoHeight,
-      };
-
-      faceapi.matchDimensions(canvasRef.current, displaySize);
-      setDetectingFace(true);
-      const detections = await faceapi.detectSingleFace(
-        video,
-        new faceapi.TinyFaceDetectorOptions({
-          inputSize: 512,
-          scoreThreshold: 0.5,
-        })
-      );
-      setDetectingFace(false);
-      if (!detections) {
-        setFaceDetected(false);
-        if (canvasRef.current) {
-          canvasRef.current
-            .getContext("2d")
-            .clearRect(0, 0, displaySize.width, displaySize.height);
-        }
+      try {
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+        });
+      } catch (err) {
+        toast.error("Error loading image. Please try again.");
         return;
       }
 
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
+      // Run face detection on the loaded image.
+      const detection = await faceapi.detectSingleFace(
+        image,
+        new faceapi.TinyFaceDetectorOptions()
+      );
 
-      if (canvasRef.current) {
-        canvasRef.current
-          .getContext("2d")
-          .clearRect(0, 0, displaySize.width, displaySize.height);
-
-        faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
-      }
-      setFaceDetected(true);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      setCameraActive(true);
-      setCameraPermissionGranted(true);
-    } catch (error) {
-      console.error("Camera permission denied:", error);
-      setCameraPermissionGranted(false);
-    }
-  };
-
-  useEffect(() => {
-    let interval;
-    if (cameraActive && modelsLoaded) {
-      interval = setInterval(() => {
-        detectFace();
-      }, 1000); // Check for face every second
-    }
-    return () => clearInterval(interval); // Clean up interval on unmount
-  }, [cameraActive, modelsLoaded]);
-
-  const handleCapture = async () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (imageSrc) {
-      setCameraActive(false);
-      setSubmissionInProgress(true); // Show loader when submission starts
-      try {
-        const selfieBlob = await fetch(imageSrc).then((res) => res.blob());
-        const documentBlob = await fetch(docImg).then((res) => res.blob());
-
-        const formData = new FormData();
-        formData.append("document", documentBlob, "document.jpg");
-        formData.append("selfie", selfieBlob, "selfie.jpg");
-
-        console.log("Uploading form data...");
-        const response = await uploadKyc({
-          id: kycId,
-          file: formData,
-        }).unwrap();
-        console.log("Upload successful:", response);
-
-        const { id } = response.kyc;
-
-        dispatch(setKycId(id));
-        navigate(`/kyc/success/${id}`);
-      } catch (apiError) {
-        console.error("Error during upload:", apiError);
+      if (!detection) {
         toast.error(
-          apiError?.data?.details?.message ||
-            "Something went wrong. Please try again.",
-          {
-            style: { background: "#fee2e2", color: "#b91c1c" },
-            icon: "❌",
-          }
+          "No face detected. Please retake your selfie with a clear view of your face."
         );
-      } finally {
-        setSubmissionInProgress(false); // Hide loader once submission ends
+        return;
       }
-    } else {
-      toast.error("Unable to capture image. Please try again.", {
-        style: { background: "#fee2e2", color: "#b91c1c" },
-        icon: "📸",
-      });
+
+      // Face detected! Save the original file and its preview URL.
+      setCapturedFile(file);
+      setCapturedSelfieURL(imageURL);
+    }
+  };
+
+  // Upload the captured selfie (original file) along with the document.
+  const handleSubmit = async () => {
+    if (!capturedFile) {
+      toast.error("No selfie captured.");
+      return;
+    }
+    setSubmissionInProgress(true);
+    try {
+      // Fetch the document image as a Blob (assuming docImg is a URL).
+      const documentBlob = await fetch(docImg).then((res) => res.blob());
+      const formData = new FormData();
+      formData.append("document", documentBlob, "document.jpg");
+      // Append the original selfie file (preserving its quality).
+      formData.append("selfie", capturedFile, "selfie.jpg");
+
+      console.log("Uploading form data...");
+      const response = await uploadKyc({ id: kycId, file: formData }).unwrap();
+      console.log("Upload successful:", response);
+
+      const { id } = response.kyc;
+      dispatch(setKycId(id));
+      navigate(`/kyc/success/${id}`);
+    } catch (apiError) {
+      console.error("Error during upload:", apiError);
+      toast.error(
+        apiError?.data?.details?.message ||
+          "Something went wrong. Please try again.",
+        {
+          style: { background: "#fee2e2", color: "#b91c1c" },
+          icon: "❌",
+        }
+      );
+    } finally {
+      setSubmissionInProgress(false);
     }
   };
 
@@ -646,113 +895,52 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
             Live Selfie Capture
           </Typography>
 
-          {!cameraActive && (
-            <p className="text-center text-lg text-gray-700 mb-6">
-              Please ensure your face is clearly visible. <br />
-              Click <span className="text-blue-600 font-semibold">
-                'Take'
-              </span>{" "}
-              to start capturing your live selfie.
-            </p>
+          {capturedSelfieURL ? (
+            <div className="relative w-full max-w-lg h-80 mb-6 rounded-xl overflow-hidden shadow-2xl bg-white flex items-center justify-center">
+              <img
+                src={capturedSelfieURL}
+                alt="Captured Selfie"
+                className="w-full h-full object-cover rounded-xl shadow-lg"
+              />
+            </div>
+          ) : (
+            <div className="relative w-full max-w-lg h-80 mb-6 rounded-xl overflow-hidden shadow-2xl bg-black flex items-center justify-center">
+              <Typography variant="h6" className="text-white">
+                No selfie captured.
+              </Typography>
+            </div>
           )}
-
-          <div className="relative w-full max-w-lg h-80 mb-6 rounded-xl overflow-hidden shadow-2xl bg-white flex items-center justify-center">
-            {!cameraActive ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="flex flex-col items-center justify-center">
-                  <div className="relative w-40 h-40 rounded-full border-4 border-blue-500 flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-24 w-24 text-blue-500 animate-pulse"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M15 3h4.8c.7 0 1.2.5 1.2 1.2v4.8c0 .7-.5 1.2-1.2 1.2H15" />
-                      <path d="M4 16c0-2.2 1.8-4 4-4h8c2.2 0 4 1.8 4 4v5H4v-5z" />
-                      <circle cx="12" cy="10" r="3" />
-                      <path d="M5 3h3v3H5z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-500 mt-4 font-medium">
-                    Align your face within the circle
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="relative">
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  className="w-full h-full object-cover rounded-xl shadow-lg"
-                  videoConstraints={{
-                    width: 1280,
-                    height: 720,
-                    facingMode: "user",
-                  }}
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="absolute top-0 left-0 w-full h-full rounded-xl z-20"
-                />
-              </div>
-            )}
-
-            {/* {detectingFace && (
-              <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="bg-white bg-opacity-60 p-4 rounded-lg shadow-xl flex items-center space-x-4">
-                  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-lg text-gray-700">
-                    Detecting your face... Please keep your face clearly
-                    visible.
-                  </p>
-                </div>
-              </div>
-            )} */}
-          </div>
 
           <div className="flex space-x-4">
-            {cameraActive ? (
-              faceDetected ? (
-                <button
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg shadow-md hover:bg-blue-500 transition duration-300"
-                  onClick={handleCapture}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Uploading..." : "Capture"}
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="px-6 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {detectingFace && (
-                    <div className="w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  <span>
-                    {detectingFace ? "Detecting Face..." : "Detecting Face..."}
-                  </span>
-                </button>
-              )
-            ) : (
-              <button
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg shadow-md hover:bg-blue-500 transition duration-300"
-                onClick={handleTakePhoto}
+            <Button
+              onClick={handleTake}
+              variant="contained"
+              color="primary"
+              disabled={submissionInProgress}
+            >
+              {capturedSelfieURL ? "Retake Selfie" : "Take Selfie"}
+            </Button>
+            {capturedSelfieURL && (
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                color="secondary"
+                disabled={isLoading}
               >
-                Take
-              </button>
+                {isLoading ? "Uploading..." : "Submit"}
+              </Button>
             )}
           </div>
 
-          {!cameraPermissionGranted && cameraActive && (
-            <p className="text-red-500 mt-4">
-              Camera permission is required to proceed.
-            </p>
-          )}
+          {/* Hidden file input that opens the native camera. */}
+          <input
+            type="file"
+            accept="image/*"
+            capture="user"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
         </>
       )}
     </div>
