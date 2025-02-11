@@ -764,7 +764,7 @@
 // v3
 
 import React, { useRef, useState, useEffect } from "react";
-import { Typography, Button } from "@mui/material";
+import { Typography, Button, CircularProgress, Box } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useUploadKycMutation } from "../features/api/assetUploadApiSlice";
 import { setKycId } from "../features/auth/kycSlice";
@@ -772,12 +772,15 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as faceapi from "face-api.js";
 
+const MINIMUM_SCANNING_TIME = 2000; // in milliseconds (2 seconds)
+
 const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   // Refs and state for file capture
   const fileInputRef = useRef(null);
   const [capturedFile, setCapturedFile] = useState(null);
   const [capturedSelfieURL, setCapturedSelfieURL] = useState(null);
   const [submissionInProgress, setSubmissionInProgress] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   const [uploadKyc, { isLoading }] = useUploadKycMutation();
   const dispatch = useDispatch();
@@ -789,7 +792,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
     async function loadModels() {
       try {
         await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-        // You can load additional models if needed.
+        // Load additional models if needed.
       } catch (error) {
         console.error("Error loading face detection models:", error);
       }
@@ -808,6 +811,10 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
+      // Record the start time for scanning.
+      const startTime = Date.now();
+      setIsScanning(true);
+
       // Create an object URL for the selected file.
       const imageURL = URL.createObjectURL(file);
       const image = new Image();
@@ -820,6 +827,7 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
         });
       } catch (err) {
         toast.error("Error loading image. Please try again.");
+        setIsScanning(false);
         return;
       }
 
@@ -829,16 +837,26 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
         new faceapi.TinyFaceDetectorOptions()
       );
 
+      // Calculate elapsed time and wait if scanning completed too quickly.
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < MINIMUM_SCANNING_TIME) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, MINIMUM_SCANNING_TIME - elapsedTime)
+        );
+      }
+
       if (!detection) {
         toast.error(
           "No face detected. Please retake your selfie with a clear view of your face."
         );
+        setIsScanning(false);
         return;
       }
 
       // Face detected! Save the original file and its preview URL.
       setCapturedFile(file);
       setCapturedSelfieURL(imageURL);
+      setIsScanning(false);
     }
   };
 
@@ -895,11 +913,47 @@ const LiveSelfieCapture = ({ onNext, onBack, docImg }) => {
             Live Selfie Capture
           </Typography>
 
-          {capturedSelfieURL ? (
+          {/* Enhanced scanning view with a minimum delay */}
+          {isScanning ? (
+            <Box
+              sx={{
+                position: "relative",
+                width: "100%",
+                maxWidth: 500,
+                height: 320,
+                mb: 6,
+                borderRadius: 2,
+                overflow: "hidden",
+                boxShadow: 3,
+                background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <CircularProgress size={60} sx={{ color: "#fff" }} />
+                <Typography
+                  variant="h6"
+                  sx={{ color: "#fff", mt: 2, fontWeight: "bold" }}
+                >
+                  Please wait...
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "#fff", opacity: 0.8 }}
+                >
+                  Scanning your face
+                </Typography>
+              </Box>
+            </Box>
+          ) : capturedSelfieURL ? (
             <div className="relative w-full max-w-lg h-80 mb-6 rounded-xl overflow-hidden shadow-2xl bg-white flex items-center justify-center">
               <img
                 src={capturedSelfieURL}
                 alt="Captured Selfie"
+                // This flips the selfie image horizontally to correct the mirror effect.
+                style={{ transform: "scaleX(-1)" }}
                 className="w-full h-full object-cover rounded-xl shadow-lg"
               />
             </div>
